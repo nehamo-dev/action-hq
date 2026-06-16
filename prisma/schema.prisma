@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Task {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  sourceType     String    @default("manual")
+  sourceId       String?
+  sourceName     String?
+  sourceLink     String?
+  sender         String?
+  priority       String    @default("medium")
+  status         String    @default("pending")
+  snoozedUntil   DateTime?
+  confidence     Float     @default(0.8)
+  falsePositive  Boolean   @default(false)
+  feedbackReason String?
+  notes          String?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  feedbacks Feedback[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([sourceType])
+}
+
+model Feedback {
+  id           String   @id @default(cuid())
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  originalText String
+  feedbackType String
+  reason       String?
+  createdAt    DateTime @default(now())
+}
+
+model DailySummary {
+  id               String   @id @default(cuid())
+  date             String   @unique
+  totalTasks       Int      @default(0)
+  completedTasks   Int      @default(0)
+  urgentTasks      Int      @default(0)
+  topThemes        String?
+  generatedSummary String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Streak {
+  id           String   @id @default("singleton")
+  currentDays  Int      @default(0)
+  longestDays  Int      @default(0)
+  lastActiveAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model FeedbackPattern {
+  id         String   @id @default(cuid())
+  pattern    String   @unique
+  count      Int      @default(1)
+  sourceType String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
