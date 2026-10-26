@@ -1,159 +1,73 @@
-# ActionHQ ⚡
+# ActionHQ
 
-Your AI-powered daily command center. Automatically surfaces action items from yesterday's emails and meetings, so every morning starts with clarity instead of chaos.
+**Every promise you made yesterday, waiting for you this morning.**
 
-## What it does
-
-Every morning, ActionHQ:
-1. Reads yesterday's Gmail threads (via Gmail MCP)
-2. Reads yesterday's Granola meeting notes (via Granola MCP)
-3. Extracts genuine action items using Claude AI
-4. Deduplicates and merges similar tasks
-5. Prioritizes them (Urgent → High → Medium → Low)
-6. Generates a friendly daily briefing with themes
-
-You get one clean inbox to triage, snooze, complete, or dismiss — with a feedback loop that teaches the AI what you consider a real action item.
+Yesterday you said "I'll send that over" on three calls, got two emails that quietly needed a decision, and agreed to find a time with someone you've now forgotten about. ActionHQ reads your email and meeting notes overnight, finds the real commitments, and starts your day with one clean list instead of an inbox archaeology dig.
 
 ---
 
-## Features
+## What a morning looks like
 
-- **AI Daily Briefing** — A warm summary of your day with top themes
-- **Smart Prioritization** — Urgent/High/Medium/Low with confidence scores
-- **Task Cards** — Complete ✓, Snooze 😴, Edit ✏️, or mark "Not an action item" 👎
-- **Feedback Loop** — The AI learns what's not an action item for you
-- **Natural Language Search** — "Tasks from Jessica", "Recruiting emails", etc.
-- **Inbox Zero Confetti** 🎉 — Celebration when you clear everything
-- **Daily Streak** 🔥
-- **Dark Mode** 🌙
-- **Gmail + Granola MCP integrations**
+1. **Sync.** ActionHQ pulls yesterday's Gmail threads (skipping promotions and newsletters) and yesterday's Granola meeting notes.
+2. **Extract.** Claude reads each one for genuine action items: follow-ups you owe, decisions waiting on you, things you promised, scheduling loops to close.
+3. **Clean up.** Near-duplicates are merged, so "send the deck to Priya" from the call and from the follow-up email become one task.
+4. **Prioritize.** Each task is ranked Urgent, High, Medium or Low, with a confidence score.
+5. **Brief.** A short, warm summary of the day and its themes sits at the top.
 
----
+Then you triage: complete it, snooze it, edit it, or tell it **"Not an action item."**
 
-## Tech stack
+## It learns what "action item" means to you
+
+That last button is the interesting part. Every dismissal is recorded with its reason and rolled up into patterns with counts. On the next sync, the strongest patterns are injected into the extraction prompt, so ActionHQ stops surfacing the kinds of things you keep throwing away. No fine-tuning, no settings page: you train it just by using it.
+
+## Also
+
+- **Search in plain English.** "Tasks from Jessica", "anything about recruiting".
+- **Streaks and inbox zero.** A daily streak, focus stats and a confetti moment when the list hits zero.
+- **Dark mode**, and manual "Add task" for anything that didn't come from email or a meeting.
+
+## Under the hood
 
 | Layer | Tech |
 |---|---|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS v4 + shadcn/ui |
-| Database | SQLite via Prisma 7 |
-| AI | Claude (Anthropic SDK) |
-| Animations | Framer Motion |
+| App | Next.js 16 (App Router) · React 19 · TypeScript |
+| UI | Tailwind CSS v4 · shadcn/ui · Framer Motion · Lucide |
 | State | Zustand |
-| Icons | Lucide |
+| Data | SQLite via Prisma 7 (tasks, feedback, learned patterns, streaks) |
+| AI | Claude via the Anthropic SDK: Sonnet for extraction and the briefing, Haiku for fast search |
+| Sources | Gmail and Granola through MCP |
 
----
+```
+app/api/
+  sync/       email + meeting text → Claude → deduped, prioritized tasks
+  briefing/   the morning summary
+  search/     natural-language task search
+  tasks/      CRUD, plus feedback when a task is rejected
+  streak/     daily streak
+lib/anthropic.ts    extraction, briefing and search prompts
+services/           Gmail query builder, Granola formatter
+```
 
-## Installation
+## Run it
 
-### Prerequisites
-
-- Node.js 18+
-- An [Anthropic API key](https://console.anthropic.com/)
-
-### Steps
+Requires Node 18+ and an [Anthropic API key](https://console.anthropic.com/).
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/nehamo-dev/action-hq
 cd action-hq
-
-# 2. Install dependencies
 npm install
-
-# 3. Set up environment
-cp .env.example .env.local
-# Edit .env.local and add your ANTHROPIC_API_KEY
-
-# 4. Set up the database
+cp .env.example .env.local      # add ANTHROPIC_API_KEY (and USER_NAME for the briefing)
 npx prisma migrate dev
-
-# 5. (Optional) Seed sample data
-npx tsx scripts/seed.ts
-
-# 6. Start the dev server
-npm run dev
+npx tsx scripts/seed.ts         # optional sample data
+npm run dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
----
-
-## Environment variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Yes (for AI features) | Your Anthropic API key |
-| `DATABASE_URL` | Auto | SQLite path (default: `file:./prisma/dev.db`) |
-| `USER_NAME` | No | Your first name for the briefing (default: "Neha") |
-
----
-
-## MCP Integrations
-
-ActionHQ works with Claude Code's MCP servers.
-
-### Gmail MCP
-Reads email threads from yesterday, skipping promotions and newsletters. Claude extracts genuine action items: follow-ups, pending decisions, scheduling tasks, things you promised.
-
-### Granola MCP
-Reads meeting notes from yesterday. Claude extracts commitments you made, follow-ups assigned to you, and open questions awaiting your input.
-
-### Without MCP
-Add tasks manually via the "Add task" button.
-
----
-
-## Project structure
-
-```
-app/
-  api/
-    tasks/          # CRUD for tasks
-    tasks/[id]/     # Update / delete individual task
-    sync/           # AI extraction from email + meeting data
-    briefing/       # Daily AI summary
-    search/         # Natural language task search
-    streak/         # Daily streak tracking
-  page.tsx          # Main dashboard
-
-components/
-  dashboard/        # DailyBriefing, FocusStats, SearchBar, AddTaskButton
-  tasks/            # TaskCard, TaskList
-  sync/             # SyncPanel
-
-lib/
-  prisma.ts         # Prisma client singleton
-  anthropic.ts      # AI helpers: extract tasks, briefing, search
-
-services/
-  gmail.ts          # Gmail query builder + thread parser
-  granola.ts        # Meeting context formatter
-
-store/
-  useTaskStore.ts   # Zustand store
-
-scripts/
-  seed.ts           # Seed sample data for development
-```
-
----
-
-## Feedback learning
-
-When you mark a task as "Not an action item":
-1. Records the task and your reason in the `Feedback` table
-2. Stores a pattern in `FeedbackPattern` with a count
-3. On next sync, injects top patterns into the AI prompt so it skips similar items
-
----
+Without MCP connected, you can still add tasks by hand and use everything else.
 
 ## Roadmap
 
-- [ ] Slack integration
-- [ ] Google Calendar integration  
-- [ ] Linear / Notion sync
-- [ ] Email reply drafting from within the app
+- [ ] Slack and Google Calendar as sources
+- [ ] Draft email replies from a task
+- [ ] Sync to Linear and Notion
 - [ ] Weekly review mode
 - [ ] Mobile PWA
